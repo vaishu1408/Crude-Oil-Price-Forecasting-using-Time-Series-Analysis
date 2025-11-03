@@ -1,0 +1,621 @@
+---
+title: "project"
+author: "Varshini Vaisnavi Srinivasan"
+date: "2024-03-30"
+output: word_document
+---
+
+
+```{r}
+#installing packages
+#install.packages(c('lubridate', 'imputeTS', 'urca', 'lmtest', 'TTR', 'dplyr',
+ #                 'forecast', 'pastecs', 'seastests', 'tseries', 'uroot', 'crayon', 'Hmisc'))
+
+```
+```{r}
+
+options(repos= 'https://cran.rstudio.com/')
+# --- Importing Libraries ---
+suppressPackageStartupMessages({
+  library(lubridate)
+  library(imputeTS)
+  library(urca)
+  library(lmtest)
+  library(TTR)
+  library(dplyr)
+  library(forecast)
+  library(pastecs)
+  library(seastests)
+  library(tseries)
+  library(uroot)
+  library(crayon)
+  library(ggplot2)
+})
+```
+
+```{r}
+# Libraries Settings
+options(warn = -1)
+options(repr.plot.width = 14, repr.plot.height = 10)
+
+#Importing Dataset
+data <- read.csv('crude oil.csv')
+
+#subset
+data <- data %>% select(LOCATION, TIME, Value) 
+
+oil_canada <- data %>% filter(LOCATION == 'CAN', TIME > 1970)
+oil_german <- data %>% filter(LOCATION == 'DEU', TIME > 1970)
+
+
+cat(blue$bold('Dataset:\n'))
+cat(black('Canada: '))
+head(oil_canada, 5)
+cat(black('German: '))
+head(oil_german, 5)
+
+#Dataset Info
+cat(blue$bold('Dataset Info:\n'))
+
+cat(black('Canada :\n'))
+cat(reset('\n\t Total Rows: ',dim(oil_canada)[1]))
+
+cat(reset('\n\t Total Columns: ',dim(oil_canada)[2]))
+cat(black('German: \n'))
+cat(reset('\n\tTotal Rows: ',dim(oil_german)[1]))
+cat(reset('\n\t Total Columns: ',(oil_german)[2]))
+
+```
+
+***EDA***
+```{r}
+cat(black('Canada: '))
+oil_canada %>% summarise(LOCATION = sum(is.na(LOCATION) == 1), 
+                      TIME = sum(is.na(TIME) == 1),
+                      Value=sum(is.na(Value) == 1))
+
+cat(black('German: '))
+oil_german %>% summarise(LOCATION = sum(is.na(LOCATION) == 1), 
+                      TIME = sum(is.na(TIME) == 1),
+                      Value=sum(is.na(Value) == 1))
+
+
+```
+
+***Time Series Plot***
+
+```{r}
+#New Dataframe
+new_can = ts(oil_canada$Value, frequency = 1, start = 1971)
+```
+```{r}
+ts_ger = ts(oil_german$Value, frequency = 1, start = 1971)
+```
+```{r}
+#Time Series Plot
+autoplot(new_can, series = 'Canada', lwd = 1.2) +
+  autolayer(ts_ger, series = 'German', lwd = 1.2)+
+  scale_color_manual(values = c('#6F1D1B', '#DBB42C'))+
+  labs(title = 'Crude Oil Value Plot', x = '\nYear', y = 'Value\n', 
+       subtitle = 'in Canada and German')+
+  geom_hline(yintercept = 91517.88, linetype = 'longdash', color = '#800000')+
+  annotate('text', x = 2017, y = 85000, label = 'Avg. Value:\n91517.88', size = 2, color = '#290100')+
+  annotate('text', x = 1986, y = 100000, label = '1982 - Lowest crude oil value\n(57339.49)', size = 2, fontface = 'italic', 
+           color = '#290100')+
+  annotate(geom = 'curve', x = 1984, y = 90000, xend = 1982, yend = 60000, curvature = 0.1, arrow = arrow(length = unit(0.5, 'cm')),
+           color = '#290100')+
+  annotate('text', x = 2004, y = 137500, label = 'Crude oil value continues to\nincrease in the past 8 years', size = 2, fontface = 'italic', 
+           color = '#290100')+
+  annotate(geom = 'curve', x = 2006, y = 130000, xend = 2009, yend = 110000, curvature = -0.2, arrow = arrow(length = unit(0.5, 'cm')),color = '#290100')+
+  annotate('text', x = 2011, y = 162500, label = '2017 - Highest crude\noil value (174226.07)', size = 2, fontface = 'italic', 
+           color = '#290100')+
+  annotate(geom = 'curve', x = 2013, y = 170000, xend = 2016, yend = 174300, curvature = -0.1, arrow = arrow(length = unit(0.5, 'cm')),
+           color = '#290100')+
+  geom_hline(yintercept = 3898.02, linetype = 'longdash', color = '#B69121')+
+  annotate('text', x = 2017, y = 11000, label = 'Avg. Value:\n3898.02', size = 2, color = '#76520E')+
+  annotate('text', x = 2000, y = 15000, label = 'Crude oil value continues to\ndecline until 2017', size = 2, fontface = 'italic', 
+           color = '#76520E')+
+  theme(panel.background = element_rect(fill = 'white', colour = 'white'),
+        plot.background = element_rect(fill = 'white', colour = 'white'),
+        plot.title = element_text(size = 14, colour = 'gray15', face = 'bold', hjust = 0.5, vjust = 0.5),
+        plot.subtitle = element_text(size = 12, colour = 'gray15', face = 'italic', hjust = 0.5, vjust = 0.5),
+        plot.caption = element_text(color = 'gray25', face = 'italic', size = 12),
+        panel.grid.major.y = element_line(linetype = 'dotted', colour = 'gray70'),
+        panel.grid.minor.y = element_line(linetype = 'dotted', colour = 'gray75'),
+        panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank(),  
+        axis.title = element_text(size = 14, face = 'bold', colour = 'gray15'),
+        axis.text = element_text(size = 12, colour = 'gray8'), legend.position = 'bottom',
+        axis.line = element_line(), legend.text = element_text(size = 10),
+        legend.title = element_text(colour = 'gray5', size = 14, face = 'bold'),
+        legend.background = element_rect(fill = 'white', linetype = 'blank'))
+```
+
+* Canada: - upward trend with no seasonality
+          -  non- stationary
+
+* German: - downward trend with no seasonality
+          - stationary
+
+
+***Statistical and Non Statistical Test***
+
+Test Hypothesis:
+
+H0: no trend available 
+
+H1: trend available
+
+if p-value is less than 0.05, reject H0
+
+```{r}
+
+# Mann-Kendall Trend Test
+cat(blue$bold('Mann-Kendall Trend Test :.\n'))
+
+cat(black('Canada '))
+trend.test(new_can)
+
+cat(black('German '))
+trend.test(ts_ger)
+
+```
+Canada:
+* p-value for Canada is less than 0.05, so no trend; H0 accepted
+
+German: 
+* p-value for Germany is less than 0.05, so no trend; H0 accepted
+
+**ACF and PACF Plot**
+
+```{r}
+# --- ACF & PACF Plot (Canada) ---
+tsdisplay(new_can, main = 'ACF and PACF Plot - Canada', col = '#F00000', lwd = 1.5, xlab = 'Year', ylab = 'Oil Value', cex.main = 1.5, cex.lab = 1.15)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+```
+
+*series for Canada is not stationary, autocorrelation remains significant for the first several lags
+
+*ACF dies down exceptionally slowly
+
+```{r}
+#ACF & PACF Plot
+tsdisplay(ts_ger, main = 'ACF and PACF Plot - German', col = '#F00000', lwd = 1.5, xlab = 'Year', ylab = 'Oil Value', cex.main = 1.5, cex.lab = 1.15)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+```
+
+* German is not stationary ,remain significant for first several lags
+
+* ACF plot dies down exceptionally slowly
+
+***Unit Root Test***
+
+H0: not stationary
+H1: stationary
+```{r}
+#ADF Test 
+cat(blue$bold('ADF Test:\n'))
+
+cat(black$bold('Canada: '))
+adf.test(new_can)
+
+cat(black$bold('German: '))
+adf.test(ts_ger)
+```
+Canada:
+
+* p-value for Canada is greater than 0.05, not stationary
+
+German:
+
+* p-value for German is greater than 0.05, not stationary
+
+
+***Forecasting Techniques***
+
+```{r}
+#Splitting Dataframe
+split_can = round(length(new_can)*0.7, 0)
+split_ger = round(length(ts_ger)*0.7, 0)
+
+#Canada - Train & Test
+train_can = window(new_can, end = 2003)
+test_can = window(new_can, start = 2004)
+
+#German - Train & Test
+train_ger = window(ts_ger, end = 2003)
+test_ger = window(ts_ger, start = 2004)
+
+#Train & Test Detail
+cat(blue$bold('.: Train-Test Info:\n'))
+cat(black$bold('Canada: \n'))
+cat(reset('\tTrain size: '))
+cat(bold(length(train_can), '\n'))
+cat(reset('\tTest size: '))
+cat(bold(length(test_can), '\n'))
+cat(black$bold('German: \n'))
+cat(reset('\tTrain size: '))
+cat(bold(length(train_ger), '\n'))
+cat(reset('\tTest size: '))
+cat(bold(length(test_ger), '\n'))
+```
+
+**SES**
+
+alpha is called smoothing parameter, values between 0 to 1
+
+α =0, future forecasted values based on the average of past data
+α = 1, future forecasted values based on current observation 
+
+```{r}
+#Applying SES
+cat(black$bold('Canada : \n'))
+fitses_canada = ses(train_can, alpha = 0.8, initial = 'simple')
+plot(forecast(fitses_canada, data.frame(test_can, h = length(test_can))), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(fitses_canada), col = '#78380C', lwd = 2.5)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+
+title(main = 'Forecast Results - Canada', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 1)
+title(main = 'using Simple Exponential Smoothing', cex.main = 1, font.main = 2, line = 0.2)
+
+# Summary
+cat(black$bold('.: SES Summary :.'))
+summary(fitses_canada)
+cat(reset('\n'))
+```
+```{r}
+cat(black$bold('Canada : \n'))
+accuracy(fitses_canada, test_can)
+```
+```{r}
+#Applying SES
+cat(black$bold('German : \n'))
+fitses_ger = ses(train_ger, alpha = 0.8, initial = 'simple')
+plot(forecast(fitses_ger, data.frame(test_ger, h = length(test_ger))), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(fitses_ger), col = '#C32F27', lwd = 2.5)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - German', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using Simple Exponential Smoothing', cex.main = 1, font.main = 3, line = 0.2)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+
+cat(blue$bold('.: SES Summary :.'))
+summary(fitses_ger)
+cat(reset('\n'))
+```
+```{r}
+cat(black$bold('German : \n'))
+accuracy(fitses_ger, test_ger)
+```
+```{r}
+#ETS
+cat(black$bold('Canada : \n'))
+ets_canada = ets(train_can)
+ets_canada_forecast = ets(test_can, model = ets_canada, use.initial.values = FALSE)
+plot(forecast(ets_canada, h = 5), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(ets_canada), col = '#503A2B', lwd = 2.5)
+
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - Canada', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using ETS', cex.main = 1, font.main = 3, line = 0.2)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+
+cat(bold('.: ETS Summary :.'))
+summary(ets_canada)
+cat(reset('\n'))
+```
+
+
+```{r}
+cat(blue$bold('German : \n'))
+
+ets_ger = ets(train_ger)
+ets_ger_forecast = ets(test_ger, model = ets_ger, use.initial.values = FALSE)
+plot(forecast(ets_ger, h = 5), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(ets_ger), col = '#FFBA08', lwd = 2.5)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - German', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using ETS', cex.main = 1, font.main = 3, line = 0.2)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+
+cat(black$bold('.: ETS Summary :.'))
+summary(ets_ger)
+cat(reset('\n'))
+```
+
+
+```{r}
+
+cat(blue$bold('Canada : \n'))
+
+naive_canada = naive(train_can)
+plot(forecast(naive_canada, h = 5), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(naive_canada), col = '#A94923', lwd = 2.5)
+
+#Plot 
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+
+title(main = 'Forecast Results - Canada', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using Moving Average', cex.main = 1, font.main = 3, line = 0.2)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+
+cat(black$bold('.: MA Summary :.'))
+summary(naive_canada)
+cat(reset('\n'))
+```
+
+```{r}
+cat(blue$bold('German : \n'))
+naive_ger = naive(train_ger)
+plot(forecast(naive_ger, h = 5), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(naive_ger), col = '#FFDD00', lwd = 2)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+
+title(main = 'Forecast Results - German', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using Moving Average', cex.main = 1, font.main = 3, line = 0.2)
+title(adj = 1, cex.sub = 1, font.sub = 3)
+
+cat(black$bold('.: MA Summary :.'))
+summary(naive_ger)
+cat(reset('\n'))
+```
+
+```{r}
+
+#Comparison Accuracy
+cat(blue$bold('Canada : \n'))
+
+#SES Accuracy
+cat(black$bold('\n.: SES Accuracy :.\n'))
+accuracy(fitses_canada, test_can)
+
+#ETS Accuracy
+cat(black$bold('.: ETS Accuracy :.\n'))
+ets_canada_acc = rbind(accuracy(ets_canada), accuracy(ets_canada_forecast))
+rownames(ets_canada_acc) <- c('Training Set', 'Test Set')
+ets_canada_acc
+
+#MA Accuracy
+cat(black$bold('\n.: Moving Average Accuracy :.\n'))
+accuracy(naive_canada, test_can)
+
+```
+```{r}
+
+cat(blue$bold('Germany : \n'))
+
+#SES Accuracy
+cat(black$bold('\n.: SES Accuracy :.\n'))
+accuracy(fitses_ger, test_ger)
+
+#ETS Accuracy
+cat(black$bold('\n.: ETS Accuracy :.\n\n'))
+ets_ger_acc = rbind(accuracy(ets_ger), accuracy(ets_ger_forecast))
+rownames(ets_ger_acc) <- c('Training Set', 'Test Set')
+ets_ger_acc
+
+#Naive Model Accuracy
+cat(black$bold('\n.: Moving Average Accuracy :.\n\n'))
+accuracy(naive_ger, test_ger)
+
+```
+
+Canada: 
+
+* In general, models are overfitting, since RMSE and MAE values for test is higher compare to training
+
+* From MAPE results, ETS model provides an error percentage of 5.9% in training and 5.1% in testing
+
+German:
+
+* In general, models are overfitting, since RMSE and MAE values for test higher compare to training
+
+* From MAPE results, ETS model error percentage of 2.9% for training and 5.6% for testing
+
+
+
+***Non- Seasonal Differencing***
+
+*Non-seasonal differencing is needed for both countries in order to get stationary time series 
+
+*perform non-seasonal differencing before applying suitable ARIMA model
+
+
+**ACF and PACF Plot after 2 Non-Seasonal Differencing**
+```{r}
+#Canada - ACF and PACF after 2 Non-Seasonal Differencing
+tsdisplay(diff(diff(new_can, 1), 1), main = 'Canada - ACF & PACF after 2 Differencing', col = '#844F39', lwd = 1.5, xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15)
+
+```
+
+```{r}
+
+#German - ACF and PACF after 2 Non-Seasonal Differencing
+tsdisplay(diff(diff(ts_ger,1),1), main = 'German - ACF & PACF after 2 Differencing', col = '#DC5713', lwd = 1.5, xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15)
+
+```
+
+
+**ARIMA Models**
+
+ARIMA models that will be built will be defined based on ACF and PACF plot for both countries. 
+
+Canada:
+
+* ACF: cut off after lag 1/ MA(1)
+
+* PACF: cut off after lag 1/ AR(1)
+
+* Differencing needed (d) = 2
+
+Conclusion: ARIMA (1,2,1)
+
+German:
+
+ACF: cut off after lag 1/ MA(1)
+
+PACF: cut off after lag 1/ AR(1)
+
+Differencing needed (d) = 2
+
+Conclusion: ARIMA(1,2,1)
+
+Comparsion purpose, ARIMA(1,2,2) will be both countries
+
+**ARIMA(1,2,1):**
+
+```{r}
+#Canada - ARIMA(1,2,1)
+arima_can_121 = Arima(new_can, order = c(1,2,1))
+
+#German - ARIMA(1,2,1)
+arima_ger_121 = Arima(ts_ger, order = c(1,2,1))
+
+```
+**ARIMA(1,2,2):**
+
+```{r}
+#Canada - ARIMA(1,2,2)
+arima_can_122 = Arima(new_can, order = c(1,2,2))
+
+#German - ARIMA(1,2,2)
+arima_ger_122 = Arima(ts_ger, order = c(1,2,2))
+```
+
+***ARIMA Models Comparsion***
+
+**Relative Performance (AIC, AICc and BIC)**
+
+Lower the AIC, AICc and BIC values the better ARIMA model
+
+```{r}
+#Canada - ARIMA Summary
+cat(blue$bold('Canada : \n'))
+
+cat(black$bold('\n.: ARIMA 1 Accuracy :.\n'))
+summary(arima_can_121)
+cat(black$bold('\n.: ARIMA 2 Accuracy :.\n'))
+summary(arima_can_122)
+```
+
+It can be concluded that model ARIMA(1,2,1) has better AIC, AICc, BIC values
+
+```{r}
+#German - ARIMA Summary
+cat(blue$bold('German : \n'))
+cat(black$bold('.: ARIMA 1 Accuracy :.'))
+summary(arima_ger_121)
+cat(black$bold('.: ARIMA 2 Accuracy :.'))
+summary(arima_ger_122)
+```
+It can concluded that the model ARIMA(1,2,1) has better AIC, AICc and BIC values
+
+
+**Forecasting using ARIMA(1,2,1)**
+
+Forecasting for the following ten periods for both countries
+
+```{r}
+
+#Plot
+plot(forecast(arima_can_121, h = 10), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(arima_can_121), col = 'goldenrod2', lwd = 2.5)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - Canada', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using Best ARIMA Model - ARIMA(1,2,1)', cex.main = 1, font.main = 3, line = 0.2)
+
+
+#Forecast
+cat(black$bold('.: Canada - Forecast Results (Best ARIMA) :.\n'))
+forecast(arima_can_121, h = 10)
+cat(reset('\n'))
+```
+
+```{r}
+#Plot
+plot(forecast(arima_ger_121, h = 10), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(arima_ger_121), col = 'red2', lwd = 2.5)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - German', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using Best ARIMA Model - ARIMA(1,2,1)', cex.main = 1, font.main = 3, line = 0.2)
+
+
+#Forecast 
+cat(black$bold('.: German - Forecast Results (Best ARIMA) :.\n'))
+cat(reset$black('*********************************************'))
+forecast(arima_ger_121, h = 10)
+cat(reset('\n'))
+```
+
+***SARIMA***
+```{r}
+library(astsa)
+
+difflog_can<-diff(diff(log(new_can)))
+
+difflog_ger<-diff(diff(log(ts_ger)))
+
+```
+```{r}
+
+sarima_121_can <- arima(difflog_can, order = c(1, 2, 1), seasonal = list(order = c(1, 1, 0), period = 12))
+
+sarima_121_ger <- arima(difflog_ger, order = c(1, 2, 1), seasonal = list(order = c(1, 1, 0), period = 12))
+```
+
+```{r}
+#Canada - ARIMA Summary
+cat(blue$bold('Canada : \n'))
+cat(black$bold('.: SARIMA Canada Accuracy :.'))
+summary(sarima_121_can)
+cat(blue$bold('German : \n'))
+cat(black$bold('\n.: SARIMA German Accuracy :.'))
+summary(sarima_121_ger)
+
+```
+
+**Forecasting using SARIMA**
+
+```{r}
+
+#Plot SARIMA Model
+plot(forecast(sarima_121_can, h = 10), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(sarima_121_can), col = 'goldenrod2', lwd = 2.5)
+
+#Plot
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - Canada', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using  SARIMA Model - SARIMA(1, 2, 1)(1, 1, 0)_{12}', cex.main = 1, font.main = 3, line = 0.2)
+
+
+#Forecast
+cat(black$bold('.: Canada - Forecast Results (SARIMA) :.\n'))
+forecast(sarima_121_can, h = 10)
+cat(reset('\n'))
+```
+```{r}
+#Plot
+plot(forecast(sarima_121_ger, h = 10), main = '', xlab = '', ylab = '', bty = 'L')
+lines(fitted(sarima_121_ger), col = 'goldenrod2', lwd = 2.5)
+
+grid(nx = NA, ny = NULL, lty = 2, col = 'gray85', lwd = 1)
+title(main = 'Forecast Results - German', xlab = 'Year', ylab = 'Values', cex.main = 1.5, cex.lab = 1.15, font.lab = 2)
+title(main = 'using  SARIMA Model - SARIMA(1, 2, 1)(1, 1, 0)_{12}', cex.main = 1, font.main = 3, line = 0.2)
+
+
+#Forecast 
+cat(black$bold('.: German - Forecast Results (SARIMA) :.\n'))
+forecast(sarima_121_ger, h = 10)
+cat(reset('\n'))
+```
+
