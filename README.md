@@ -1,5 +1,4 @@
-#Crude Oil Price Prediction
-Project Overview
+Crude Oil Price Prediction
 
 This project focuses on building a predictive model to forecast crude oil prices across different countries using historical production data and market indicators. The goal is to provide accurate forecasts that help investors, policymakers, and analysts make data-driven decisions in the highly volatile oil market.
 
